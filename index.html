@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fast Electronic | Scientific Room Monitoring System</title>
+  <meta name="description" content="Precision Scientific Room Monitoring System for ESP32 IoT Nodes with real-time temperature, humidity, psychrometric telemetry, and 24-hour historical logging.">
+  <link rel="stylesheet" href="css/styles.css">
+  <script>
+    (function () {
+      const savedTheme = localStorage.getItem("rms32_theme") || "light";
+      document.documentElement.setAttribute("data-theme", savedTheme);
+    })();
+  </script>
+</head>
+<body>
+
+  <!-- Animated Scientific Canvas Background -->
+  <canvas id="bgCanvas"></canvas>
+
+  <div class="app-container">
+
+    <!-- ======================================================================
+         Navigation Bar (White Theme + Scientific Accent)
+         ====================================================================== -->
+    <header class="navbar">
+      <div class="brand-wrapper">
+        <div class="brand-icon">
+          <!-- Spinning Atom Logo -->
+          <svg class="atom-logo" viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round">
+            <g class="atom-spin">
+              <g transform="rotate(0 12 12)">
+                <path d="M2 12a10 4 0 1 0 20 0a10 4 0 1 0 -20 0"/>
+                <circle r="1.3" fill="currentColor" stroke="none">
+                  <animateMotion dur="2.4s" begin="0s" repeatCount="indefinite" path="M2 12a10 4 0 1 0 20 0a10 4 0 1 0 -20 0"/>
+                </circle>
+              </g>
+              <g transform="rotate(60 12 12)">
+                <path d="M2 12a10 4 0 1 0 20 0a10 4 0 1 0 -20 0"/>
+                <circle r="1.3" fill="currentColor" stroke="none">
+                  <animateMotion dur="2.4s" begin="-0.8s" repeatCount="indefinite" path="M2 12a10 4 0 1 0 20 0a10 4 0 1 0 -20 0"/>
+                </circle>
+              </g>
+              <g transform="rotate(120 12 12)">
+                <path d="M2 12a10 4 0 1 0 20 0a10 4 0 1 0 -20 0"/>
+                <circle r="1.3" fill="currentColor" stroke="none">
+                  <animateMotion dur="2.4s" begin="-1.6s" repeatCount="indefinite" path="M2 12a10 4 0 1 0 20 0a10 4 0 1 0 -20 0"/>
+                </circle>
+              </g>
+            </g>
+            <circle cx="12" cy="12" r="2.2" fill="currentColor" stroke="none">
+              <animate attributeName="r" values="2.2;2.7;2.2" dur="1.8s" repeatCount="indefinite"/>
+            </circle>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <h1>Fast Electronic <span class="badge">LAB GRADE</span></h1>
+          <p>Scientific Room Environmental Telemetry &amp; Diagnostics</p>
+        </div>
+      </div>
+
+      <!-- Navigation & Hardware Controls -->
+      <div class="nav-controls">
+        <!-- Live Connection Status Badge -->
+        <div id="deviceStatusBadge" class="device-status-badge connected">
+          <span class="status-dot"></span>
+          <span id="statusText">ESP32: SIMULATED</span>
+        </div>
+
+        <!-- Connect Real ESP32 Button (Opens connection modal & WebSerial) -->
+        <button id="btnOpenConnectModal" class="btn btn-connect" title="Connect Real ESP32 via USB Serial or Wi-Fi">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="4" y="4" width="16" height="16" rx="2"/>
+            <rect x="9" y="9" width="6" height="6"/>
+            <line x1="9" y1="1" x2="9" y2="4"/>
+            <line x1="15" y1="1" x2="15" y2="4"/>
+            <line x1="9" y1="20" x2="9" y2="23"/>
+            <line x1="15" y1="20" x2="15" y2="23"/>
+            <line x1="20" y1="9" x2="23" y2="9"/>
+            <line x1="20" y1="14" x2="23" y2="14"/>
+            <line x1="1" y1="9" x2="4" y2="9"/>
+            <line x1="1" y1="14" x2="4" y2="14"/>
+          </svg>
+          Connect Real ESP32
+        </button>
+
+        <!-- Toggle Simulation Button (Active when no physical MCU is attached) -->
+        <button id="btnSimulateToggle" class="btn btn-simulate active" title="Toggle Real-Time Environmental Data Simulator">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="6" y="4" width="4" height="16"/>
+            <rect x="14" y="4" width="4" height="16"/>
+          </svg>
+          <span id="simulateBtnText">Pause Simulation</span>
+        </button>
+
+        <!-- Reset All Data Button -->
+        <button id="btnResetData" class="btn btn-reset" title="Clear all historical data, reset charts and counters">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+            <path d="M3 3v5h5"/>
+          </svg>
+          Reset Data
+        </button>
+
+        <!-- Dark / Light Mode Toggle Button -->
+        <button id="btnThemeToggle" class="btn btn-theme" title="Toggle Black/White/Lime Green Dark Mode">
+          <svg class="theme-icon-sun" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="5"/>
+            <line x1="12" y1="1" x2="12" y2="3"/>
+            <line x1="12" y1="21" x2="12" y2="23"/>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+            <line x1="1" y1="12" x2="3" y2="12"/>
+            <line x1="21" y1="12" x2="23" y2="12"/>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+          </svg>
+          <svg class="theme-icon-moon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+          </svg>
+          <span id="themeToggleText">Dark Mode</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- ======================================================================
+         Main Dashboard Content
+         ====================================================================== -->
+    <main class="main-content">
+
+      <!-- Telemetry Strip (Last Update & Sync Health) -->
+      <div class="telemetry-strip">
+        <div class="telemetry-info-group">
+          <div class="telemetry-item">
+            <span id="updatePulse" class="update-pulse"></span>
+            <span>Last Update:</span>
+            <strong id="lastUpdateRelative">Just now</strong>
+          </div>
+          <div class="telemetry-item">
+            <span>Precise Timestamp:</span>
+            <strong id="lastUpdateExact">--:--:--.---</strong>
+          </div>
+          <div class="telemetry-item">
+            <span>Data Source:</span>
+            <strong id="telemetrySource">Simulated (Stochastic Model)</strong>
+          </div>
+        </div>
+
+        <div class="telemetry-info-group">
+          <div class="telemetry-item">
+            <span>Node ID:</span>
+            <strong id="nodeIdDisplay">ESP32-S3-08B7A</strong>
+          </div>
+          <div class="telemetry-item">
+            <span>Sampling:</span>
+            <strong>0.1 Hz (10s)</strong>
+          </div>
+          <div class="telemetry-item cadence-item" title="Next telemetry frame arrival in 10s">
+            <span>Next Frame:</span>
+            <div class="cadence-container">
+              <div class="cadence-bar-track">
+                <div id="cadenceProgressBar" class="cadence-bar-fill"></div>
+              </div>
+              <strong id="cadenceCountdown">10s</strong>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ====================================================================
+           Key Telemetry Metric Cards (Temperature & Humidity)
+           ==================================================================== -->
+      <section class="metrics-grid two-cards-grid">
+
+        <!-- Temperature Card -->
+        <article class="metric-card temp-card">
+          <div class="card-header">
+            <div class="card-title-group">
+              <div class="card-icon temp">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"/>
+                </svg>
+              </div>
+              <span class="card-title">Temperature</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:0.5rem;">
+              <button id="tempUnitToggle" class="sim-quick-btn unit-switch-btn" title="Switch between Celsius and Fahrenheit">°F</button>
+              <span id="tempBadge" class="card-badge badge-optimal">NOMINAL</span>
+            </div>
+          </div>
+
+          <div class="card-body">
+            <div>
+              <div class="metric-value-container">
+                <span id="tempValue" class="metric-number">22.4</span>
+                <span id="tempUnit" class="metric-unit">°C</span>
+                <span class="metric-uncertainty">&plusmn;0.15°C</span>
+              </div>
+              <span style="font-size:0.78rem; color:var(--text-muted);">Laboratory Target Range: 18.0 &ndash; 26.0°C</span>
+            </div>
+
+            <!-- Radial Percentage Gauge -->
+            <div class="gauge-wrapper" title="Calibrated Range Scale">
+              <svg class="gauge-svg" viewBox="0 0 60 60">
+                <circle class="gauge-bg" cx="30" cy="30" r="26"></circle>
+                <circle id="tempGaugeCircle" class="gauge-progress" cx="30" cy="30" r="26" stroke="#059669"></circle>
+              </svg>
+              <div id="tempGaugePct" class="gauge-pct-text">58%</div>
+            </div>
+          </div>
+
+          <div class="card-stats-row">
+            <div class="sub-stat">
+              <span class="sub-stat-label">24h Minimum</span>
+              <span id="tempMin" class="sub-stat-value">21.2°C</span>
+            </div>
+            <div class="sub-stat">
+              <span class="sub-stat-label">24h Maximum</span>
+              <span id="tempMax" class="sub-stat-value">24.1°C</span>
+            </div>
+            <div class="sub-stat">
+              <span class="sub-stat-label">24h Mean (Avg)</span>
+              <span id="tempAvg" class="sub-stat-value">22.6°C</span>
+            </div>
+          </div>
+        </article>
+
+        <!-- Relative Humidity Card -->
+        <article class="metric-card humid-card">
+          <div class="card-header">
+            <div class="card-title-group">
+              <div class="card-icon humid">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/>
+                </svg>
+              </div>
+              <span class="card-title">Relative Humidity</span>
+            </div>
+            <span id="humidBadge" class="card-badge badge-optimal">OPTIMAL</span>
+          </div>
+
+          <div class="card-body">
+            <div>
+              <div class="metric-value-container">
+                <span id="humidValue" class="metric-number">48.2</span>
+                <span class="metric-unit">%</span>
+                <span class="metric-uncertainty">&plusmn;1.5% RH</span>
+              </div>
+              <span style="font-size:0.78rem; color:var(--text-muted);">Calibrated Nominal Range: 40% &ndash; 60% RH</span>
+            </div>
+
+            <!-- Radial Percentage Gauge -->
+            <div class="gauge-wrapper" title="Relative Humidity Percentage">
+              <svg class="gauge-svg" viewBox="0 0 60 60">
+                <circle class="gauge-bg" cx="30" cy="30" r="26"></circle>
+                <circle id="humidGaugeCircle" class="gauge-progress" cx="30" cy="30" r="26" stroke="#0284c7"></circle>
+              </svg>
+              <div id="humidGaugePct" class="gauge-pct-text">48%</div>
+            </div>
+          </div>
+
+          <div class="card-stats-row">
+            <div class="sub-stat">
+              <span class="sub-stat-label">Dew Point</span>
+              <span id="humidDewPoint" class="sub-stat-value">11.2 °C</span>
+            </div>
+            <div class="sub-stat">
+              <span class="sub-stat-label">VPD (Deficit)</span>
+              <span id="humidVpd" class="sub-stat-value">1.42 kPa</span>
+            </div>
+            <div class="sub-stat">
+              <span class="sub-stat-label">Comfort State</span>
+              <span id="humidComfort" class="sub-stat-value">Optimal</span>
+            </div>
+          </div>
+        </article>
+
+      </section>
+
+      <!-- ====================================================================
+           Real-time High-Precision Dual-Axis Canvas Chart
+           ==================================================================== -->
+      <section class="chart-section">
+        <div class="chart-header">
+          <div class="chart-title-area">
+            <h2>
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 3v18h18"/>
+                <path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"/>
+              </svg>
+              Dual-Axis Continuous Telemetry Stream
+            </h2>
+            <p>Real-time environmental curves with cubic spline interpolation and crosshair tracking.</p>
+          </div>
+
+          <div class="chart-controls">
+            <!-- Legend toggles -->
+            <div class="legend-toggles">
+              <div id="legendTemp" class="legend-toggle-item" title="Click to toggle temperature line">
+                <span class="legend-color-dot temp"></span>
+                <span>Temperature (°C)</span>
+              </div>
+              <div id="legendHumid" class="legend-toggle-item" title="Click to toggle humidity line">
+                <span class="legend-color-dot humid"></span>
+                <span>Humidity (% RH)</span>
+              </div>
+            </div>
+
+            <!-- Time Window Selector -->
+            <div class="timeframe-group">
+              <button class="tf-btn" data-timeframe="5m">Live (5m)</button>
+              <button class="tf-btn" data-timeframe="1h">1h</button>
+              <button class="tf-btn" data-timeframe="6h">6h</button>
+              <button class="tf-btn active" data-timeframe="24h">24h</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="chart-canvas-wrapper">
+          <canvas id="telemetryChart"></canvas>
+          <div id="chartTooltip" class="chart-tooltip"></div>
+        </div>
+      </section>
+
+      <!-- ====================================================================
+           Smooth & Creative Hardware Workflow Architecture Animation
+           ==================================================================== -->
+      <section class="diagram-section">
+        <div class="diagram-header">
+          <div>
+            <h2>
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="2" y="2" width="20" height="8" rx="2" ry="2"/>
+                <rect x="2" y="14" width="20" height="8" rx="2" ry="2"/>
+                <line x1="6" y1="6" x2="6.01" y2="6"/>
+                <line x1="6" y1="18" x2="6.01" y2="18"/>
+              </svg>
+              Live Hardware System Workflow &amp; Signal Pipeline
+            </h2>
+            <p>Real-time visual telemetry pipeline with active packet transit, glowing bus traces, and clickable node diagnostics.</p>
+          </div>
+          <span id="pipelineStatusBadge" class="card-badge badge-optimal">PIPELINE ACTIVE</span>
+        </div>
+
+        <div class="diagram-wrapper">
+          <svg class="architecture-svg-creative" viewBox="0 0 1000 240" preserveAspectRatio="xMidYMid meet">
+            <defs>
+              <!-- Sleek Gradients -->
+              <linearGradient id="glowGradSensors" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#ffffff"/>
+                <stop offset="100%" stop-color="#f0f9ff"/>
+              </linearGradient>
+              <linearGradient id="glowGradMCU" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#ffffff"/>
+                <stop offset="100%" stop-color="#faf5ff"/>
+              </linearGradient>
+              <linearGradient id="glowGradComms" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#ffffff"/>
+                <stop offset="100%" stop-color="#ecfdf5"/>
+              </linearGradient>
+              <linearGradient id="glowGradWeb" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#ffffff"/>
+                <stop offset="100%" stop-color="#eff6ff"/>
+              </linearGradient>
+
+              <!-- Bus Track Line Gradients -->
+              <linearGradient id="busGrad1" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="#38bdf8"/>
+                <stop offset="100%" stop-color="#818cf8"/>
+              </linearGradient>
+              <linearGradient id="busGrad2" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="#818cf8"/>
+                <stop offset="100%" stop-color="#34d399"/>
+              </linearGradient>
+              <linearGradient id="busGrad3" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="#34d399"/>
+                <stop offset="100%" stop-color="#0284c7"/>
+              </linearGradient>
+
+              <!-- High-intensity Glow Filter -->
+              <filter id="softEnergyGlow" x="-20%" y="-20%" width="140%" height="140%">
+                <feGaussianBlur stdDeviation="4" result="blur"/>
+                <feMerge>
+                  <feMergeNode in="blur"/>
+                  <feMergeNode in="blur"/>
+                  <feMergeNode in="SourceGraphic"/>
+                </feMerge>
+              </filter>
+            </defs>
+
+            <!-- Background Circuit Guide Tracks -->
+            <path id="trackSensorsToMcu" d="M 200 120 C 235 120, 245 120, 280 120" fill="none" stroke="#e2e8f0" stroke-width="4" stroke-linecap="round"/>
+            <path id="trackMcuToComms" d="M 455 120 C 490 120, 500 120, 535 120" fill="none" stroke="#e2e8f0" stroke-width="4" stroke-linecap="round"/>
+            <path id="trackCommsToWeb" d="M 710 120 C 745 120, 755 120, 790 120" fill="none" stroke="#e2e8f0" stroke-width="4" stroke-linecap="round"/>
+
+            <!-- Active Glowing Energy Line Overlays -->
+            <path d="M 200 120 C 235 120, 245 120, 280 120" fill="none" stroke="url(#busGrad1)" stroke-width="2.5" stroke-dasharray="8,6" class="animated-bus-trace"/>
+            <path d="M 455 120 C 490 120, 500 120, 535 120" fill="none" stroke="url(#busGrad2)" stroke-width="2.5" stroke-dasharray="8,6" class="animated-bus-trace"/>
+            <path d="M 710 120 C 745 120, 755 120, 790 120" fill="none" stroke="url(#busGrad3)" stroke-width="2.5" stroke-dasharray="8,6" class="animated-bus-trace"/>
+
+            <!-- Smooth Moving Telemetry Energy Orbs (Continuous Motion) -->
+            <!-- Packet 1: Sensors -> ESP32 -->
+            <circle r="5" fill="#38bdf8" filter="url(#softEnergyGlow)">
+              <animateMotion dur="2.2s" repeatCount="indefinite" path="M 200 120 L 280 120"/>
+            </circle>
+            <circle r="2.5" fill="#ffffff">
+              <animateMotion dur="2.2s" repeatCount="indefinite" path="M 200 120 L 280 120"/>
+            </circle>
+
+            <!-- Packet 2: ESP32 -> Serial/Wi-Fi -->
+            <circle r="5.5" fill="#818cf8" filter="url(#softEnergyGlow)">
+              <animateMotion dur="1.8s" repeatCount="indefinite" path="M 455 120 L 535 120"/>
+            </circle>
+            <circle r="2.5" fill="#ffffff">
+              <animateMotion dur="1.8s" repeatCount="indefinite" path="M 455 120 L 535 120"/>
+            </circle>
+
+            <!-- Packet 3: Serial/Wi-Fi -> Web Dashboard -->
+            <circle r="5" fill="#34d399" filter="url(#softEnergyGlow)">
+              <animateMotion dur="1.9s" repeatCount="indefinite" path="M 710 120 L 790 120"/>
+            </circle>
+            <circle r="2.5" fill="#ffffff">
+              <animateMotion dur="1.9s" repeatCount="indefinite" path="M 710 120 L 790 120"/>
+            </circle>
+
+            <!-- Node 1: Sensor Array (DHT22 / BME280) -->
+            <g class="diagram-node creative-node" data-node="sensors" transform="translate(35, 45)">
+              <rect width="165" height="150" rx="14" fill="url(#glowGradSensors)" stroke="#bae6fd" stroke-width="1.8" class="node-box"/>
+              
+              <!-- Ambient Sensor Wave Rings -->
+              <circle cx="82" cy="52" r="26" fill="none" stroke="#38bdf8" stroke-width="1" class="pulse-ring-1"/>
+              <circle cx="82" cy="52" r="34" fill="none" stroke="#38bdf8" stroke-width="0.8" opacity="0.4" class="pulse-ring-2"/>
+              <circle cx="82" cy="52" r="20" fill="#f0f9ff" stroke="#0284c7" stroke-width="2" class="node-icon-shape"/>
+              
+              <!-- Sensor Icon -->
+              <path class="node-icon-symbol" d="M82 43v18M73 52h18" stroke="#0284c7" stroke-width="2.5" stroke-linecap="round"/>
+              
+              <text x="82" y="98" font-family="-apple-system, sans-serif" font-weight="700" font-size="13" class="node-title" text-anchor="middle">Sensors Array</text>
+              <text x="82" y="115" font-family="'JetBrains Mono', monospace" font-size="10" class="node-sub" text-anchor="middle">DHT11</text>
+              <line x1="20" y1="128" x2="145" y2="128" class="node-divider" stroke="#e0f2fe" stroke-width="1"/>
+              <text x="82" y="146" font-family="'JetBrains Mono', monospace" font-size="9" class="node-foot" text-anchor="middle">&bull; Sampling &plusmn;0.2°C &bull;</text>
+            </g>
+
+            <!-- Node 2: ESP32-S3 Microcontroller Unit -->
+            <g class="diagram-node creative-node" data-node="esp32" transform="translate(280, 45)">
+              <rect width="175" height="150" rx="14" fill="url(#glowGradMCU)" stroke="#e9d5ff" stroke-width="1.8" class="node-box"/>
+              
+              <!-- Microcontroller Chip Design -->
+              <rect class="node-icon-shape" x="65" y="32" width="45" height="42" rx="6" fill="#1e1b4b" stroke="#818cf8" stroke-width="1.5"/>
+              <circle cx="87" cy="53" r="8" fill="#4f46e5" class="cpu-core-glow"/>
+              
+              <!-- Activity LED Indicators -->
+              <circle id="espLedTx" cx="132" cy="40" r="3" fill="#22c55e" class="activity-led active"/>
+              <text x="140" y="43" font-family="'JetBrains Mono', monospace" font-size="7" fill="#64748b">TX</text>
+              <circle id="espLedRx" cx="132" cy="52" r="3" fill="#38bdf8" class="activity-led active"/>
+              <text x="140" y="55" font-family="'JetBrains Mono', monospace" font-size="7" fill="#64748b">RX</text>
+
+              <text x="87" y="98" font-family="-apple-system, sans-serif" font-weight="700" font-size="13" class="node-title" text-anchor="middle">ESP32 Node</text>
+              <text x="87" y="115" font-family="'JetBrains Mono', monospace" font-size="10" class="node-sub" text-anchor="middle">Dual-Core Xtensa LX7</text>
+              <line x1="20" y1="128" x2="155" y2="128" class="node-divider" stroke="#f3e8ff" stroke-width="1"/>
+              <text x="87" y="146" font-family="'JetBrains Mono', monospace" font-size="9" class="node-foot" text-anchor="middle">115200 Baud &bull; ADC/I2C</text>
+            </g>
+
+            <!-- Node 3: Communication Bridge (Serial / Wi-Fi) -->
+            <g class="diagram-node creative-node" data-node="comms" transform="translate(535, 45)">
+              <rect width="175" height="150" rx="14" fill="url(#glowGradComms)" stroke="#a7f3d0" stroke-width="1.8" class="node-box"/>
+              
+              <!-- Wi-Fi / Serial Radar Icon -->
+              <circle cx="87" cy="52" r="22" fill="#ecfdf5" stroke="#059669" stroke-width="1.5" class="node-icon-shape"/>
+              <path class="node-icon-symbol" d="M77 60 a14 14 0 0 1 20 0" fill="none" stroke="#059669" stroke-width="2" stroke-linecap="round"/>
+              <path class="node-icon-symbol" d="M72 55 a21 21 0 0 1 30 0" fill="none" stroke="#059669" stroke-width="2" stroke-linecap="round" opacity="0.6"/>
+              <circle cx="87" cy="64" r="2.5" fill="#059669"/>
+
+              <text x="87" y="98" font-family="-apple-system, sans-serif" font-weight="700" font-size="13" class="node-title" text-anchor="middle">Serial / Wi-Fi Hub</text>
+              <text x="87" y="115" font-family="'JetBrains Mono', monospace" font-size="10" class="node-sub" text-anchor="middle">WebSerial &bull; WebSocket</text>
+              <line x1="20" y1="128" x2="155" y2="128" class="node-divider" stroke="#d1fae5" stroke-width="1"/>
+              <text x="87" y="146" font-family="'JetBrains Mono', monospace" font-size="9" class="node-foot" text-anchor="middle">Zero-Latency Bridge</text>
+            </g>
+
+            <!-- Node 4: AeroLab Dashboard Screen -->
+            <g class="diagram-node creative-node" data-node="dashboard" transform="translate(790, 45)">
+              <rect width="175" height="150" rx="14" fill="url(#glowGradWeb)" stroke="#bfdbfe" stroke-width="1.8" class="node-box"/>
+              
+              <!-- Monitor Display Graphic -->
+              <rect class="node-icon-shape" x="62" y="34" width="50" height="34" rx="4" fill="#0f172a" stroke="#2563eb" stroke-width="1.5"/>
+              <path d="M68 53 L74 46 L82 56 L90 42 L102 52" fill="none" stroke="#38bdf8" stroke-width="1.5" stroke-linecap="round"/>
+              <line x1="87" y1="68" x2="87" y2="74" stroke="#64748b" stroke-width="2"/>
+              <line x1="77" y1="74" x2="97" y2="74" stroke="#64748b" stroke-width="2"/>
+
+              <text x="87" y="98" font-family="-apple-system, sans-serif" font-weight="700" font-size="13" class="node-title" text-anchor="middle">Electronic Laboratory</text>
+              <text x="87" y="115" font-family="'JetBrains Mono', monospace" font-size="10" class="node-sub" text-anchor="middle">Browser Dashboard</text>
+              <line x1="20" y1="128" x2="155" y2="128" class="node-divider" stroke="#dbeafe" stroke-width="1"/>
+              <text x="87" y="146" font-family="'JetBrains Mono', monospace" font-size="9" class="node-foot" text-anchor="middle">Live Visuals &bull; CSV Export</text>
+            </g>
+          </svg>
+        </div>
+
+        <!-- Node Inspection Card -->
+        <div id="nodeDetailDrawer" class="node-details-card">
+          <div class="detail-block">
+            <h4 id="detailTitle">1. Environmental Sensor Array ( DHT11 )</h4>
+            <p id="detailDesc">Captures ambient dry-bulb temperature and relative humidity via calibrated capacitive humidity polymers and band-gap temperature sensors.</p>
+          </div>
+          <div class="detail-block">
+            <h4>Hardware Specifications &amp; Bus Configuration</h4>
+            <p id="detailCode" class="detail-code">Bus: I2C (0x76) / GPIO 4 | Sample Rate: 0.5 Hz | Accuracy: &plusmn;0.2°C, &plusmn;1.5% RH</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ====================================================================
+           24-Hour History Table & CSV Export Section
+           ==================================================================== -->
+      <section class="history-section">
+        <div class="history-header">
+          <div>
+            <h2>
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <polyline points="12 6 12 12 16 14"/>
+              </svg>
+              Historical Telemetry Logs (Latest 24 Hours)
+            </h2>
+            <p>Chronological records of calibrated temperature, humidity, dew point, and system health.</p>
+          </div>
+
+          <div class="history-actions">
+            <!-- Filter / Search input -->
+            <div class="search-input-wrapper">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"/>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+              <input type="text" id="historySearchInput" class="history-search-input" placeholder="Search logs (e.g. 23.4, Caution)">
+            </div>
+
+            <!-- Export CSV Button -->
+            <button id="btnExportCsv" class="btn btn-export-csv" title="Download entire 24-hour dataset as RFC-4180 compliant CSV">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+              Export 24h CSV
+            </button>
+
+            <!-- Reset History Button -->
+            <button id="btnResetHistoryTable" class="btn btn-reset" title="Reset historical records with option to download">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                <path d="M3 3v5h5"/>
+              </svg>
+              Reset History
+            </button>
+          </div>
+        </div>
+
+        <div class="table-responsive">
+          <table class="scientific-table">
+            <thead>
+              <tr>
+                <th>Record ID</th>
+                <th>Timestamp (Local)</th>
+                <th>Temperature</th>
+                <th>Humidity</th>
+                <th>Dew Point</th>
+                <th>Heat Index</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="historyTableBody">
+              <!-- Dynamically rendered rows -->
+            </tbody>
+          </table>
+        </div>
+
+        <div class="table-pagination">
+          <span id="paginationInfo">Showing 1-10 of 144 records</span>
+          <div class="page-controls">
+            <button id="prevPageBtn" class="page-btn">Previous</button>
+            <button id="nextPageBtn" class="page-btn">Next</button>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- ======================================================================
+         Laboratory Footer
+         ====================================================================== -->
+    <footer class="footer">
+      <div class="footer-content">
+        <div>
+          <strong>Fast Electronic</strong> &mdash; Precision Environmental Room Monitoring Architecture.
+        </div>
+        <div>
+          Compatible with ESP32-S3, ESP32-WROOM, NodeMCU &bull; Standard Laboratory
+        </div>
+      </div>
+    </footer>
+
+  </div>
+
+  <!-- ========================================================================
+       ESP32 Hardware Connection Modal (WebSerial / WebSocket / Arduino Code)
+       ======================================================================== -->
+  <div id="connectModalOverlay" class="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div style="display:flex; align-items:center; gap:0.5rem;">
+          <div class="card-icon hardware" style="width:28px; height:28px;">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="4" y="4" width="16" height="16" rx="2"/>
+              <rect x="9" y="9" width="6" height="6"/>
+            </svg>
+          </div>
+          <h3>Connect to ESP32 Microcontroller</h3>
+        </div>
+        <button id="btnCloseModal" class="btn-icon" title="Close dialog">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Modal Tabs -->
+      <div class="modal-tabs">
+        <button id="tabBtnSerial" class="modal-tab-btn active">USB Serial (WebSerial)</button>
+        <button id="tabBtnWifi" class="modal-tab-btn">Wi-Fi (WebSocket)</button>
+        <button id="tabBtnCode" class="modal-tab-btn">ESP32 Arduino Code</button>
+      </div>
+
+      <div class="modal-body">
+        <!-- Tab 1: USB WebSerial -->
+        <div id="tabContentSerial" class="tab-pane active">
+          <p style="color:var(--text-muted); font-size:0.85rem; margin-bottom:1rem;">
+            Plug your ESP32 board into your computer with a USB cable. Click <strong>Connect via USB Serial</strong> to select the COM port. The dashboard will stream real sensor values directly into the charts!
+          </p>
+
+          <div class="connect-action-box">
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap;">
+              <div>
+                <label style="font-weight:600; font-size:0.8rem; display:block; margin-bottom:4px;">Baud Rate:</label>
+                <select id="serialBaudSelect" class="sim-select" style="min-width:120px;">
+                  <option value="115200" selected>115200 bps (Standard)</option>
+                  <option value="9600">9600 bps</option>
+                  <option value="57600">57600 bps</option>
+                </select>
+              </div>
+
+              <button id="btnStartWebSerial" class="btn btn-connect" style="padding:0.6rem 1.25rem;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                  <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                </svg>
+                Connect via USB Serial
+              </button>
+            </div>
+
+            <!-- Terminal Output -->
+            <div style="margin-top:1rem;">
+              <label style="font-weight:600; font-size:0.75rem; color:var(--text-light); text-transform:uppercase;">Live Serial Monitor Log:</label>
+              <pre id="serialLogBox" class="terminal-box">Waiting for serial connection... (Plug ESP32 and click button above)</pre>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 2: Wi-Fi WebSocket -->
+        <div id="tabContentWifi" class="tab-pane">
+          <p style="color:var(--text-muted); font-size:0.85rem; margin-bottom:0.75rem;">
+            Connect your ESP32 wirelessly over your <strong>Pocket Wi-Fi</strong> or <strong>Mobile Hotspot</strong>:
+          </p>
+          <div class="modal-info-box">
+            <strong>Quick Steps for Pocket Wi-Fi:</strong><br>
+            1. Connect both your <strong>Computer</strong> and <strong>ESP32</strong> to the same Pocket Wi-Fi.<br>
+            2. Flash the <em>Pocket Wi-Fi Sketch</em> (found under the Code tab).<br>
+            3. Open Arduino Serial Monitor once to see the assigned IP (e.g. <code style="color:var(--sci-cyan);">192.168.8.105</code>).<br>
+            4. Enter the address below as <code style="color:var(--sci-cyan);">ws://&lt;ESP32-IP&gt;:81</code> and click <strong>Connect Wi-Fi</strong>!
+          </div>
+
+          <div style="display:flex; gap:0.5rem; margin-bottom:1rem;">
+            <input type="text" id="wsUrlInput" class="history-search-input" style="flex:1;" placeholder="ws://192.168.8.105:81" value="ws://192.168.1.150:81">
+            <button id="btnConnectWs" class="btn btn-connect">Connect Wi-Fi</button>
+          </div>
+
+          <pre id="wsLogBox" class="terminal-box">WebSocket stream ready. Enter your ESP32 IP address and click Connect.</pre>
+        </div>
+
+        <!-- Tab 3: ESP32 Arduino Sketch -->
+        <div id="tabContentCode" class="tab-pane">
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.6rem; flex-wrap:wrap; gap:0.5rem;">
+            <!-- Code Type Selector -->
+            <div style="display:flex; gap:0.35rem;">
+              <button id="btnCodeSelectWifi" class="sim-quick-btn active">Pocket Wi-Fi Code</button>
+              <button id="btnCodeSelectUsb" class="sim-quick-btn">USB Serial Code</button>
+            </div>
+            <button id="btnCopyCode" class="sim-quick-btn">Copy Code</button>
+          </div>
+          <pre id="codeBlockSnippet" class="code-box"><code>#include &lt;WiFi.h&gt;
+#include &lt;WebSocketsServer.h&gt; // Install "WebSockets" by Markus Sattler in Arduino Library Manager
+#include "DHT.h"
+
+// 1. Enter your Pocket Wi-Fi credentials
+const char* ssid = "YOUR_POCKET_WIFI_SSID";
+const char* password = "YOUR_POCKET_WIFI_PASSWORD";
+
+#define DHTPIN 4     // Digital pin connected to DHT11
+#define DHTTYPE DHT11
+DHT dht(DHTPIN, DHTTYPE);
+
+WebSocketsServer webSocket = WebSocketsServer(81); // WebSocket server on port 81
+unsigned long lastMsg = 0;
+
+void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length) {
+  if (type == WStype_CONNECTED) {
+    IPAddress ip = webSocket.remoteIP(num);
+    Serial.printf("[%u] Dashboard connected from %s\n", num, ip.toString().c_str());
+  }
+}
+
+void setup() {
+  Serial.begin(115200);
+  dht.begin();
+
+  // Connect to Pocket Wi-Fi
+  Serial.print("Connecting to Pocket Wi-Fi: ");
+  Serial.println(ssid);
+  WiFi.begin(ssid, password);
+
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+
+  Serial.println("\nWiFi connected successfully!");
+  Serial.print(">>> YOUR ESP32 IP ADDRESS: ");
+  Serial.println(WiFi.localIP()); // <-- Copy this IP address into the website!
+
+  // Start WebSocket Server on port 81
+  webSocket.begin();
+  webSocket.onEvent(webSocketEvent);
+}
+
+void loop() {
+  webSocket.loop();
+
+  // Send real sensor telemetry every 10 seconds (0.1 Hz)
+  if (millis() - lastMsg &gt; 10000) {
+    lastMsg = millis();
+
+    float temp = dht.readTemperature();
+    float humid = dht.readHumidity();
+
+    if (!isnan(temp) &amp;&amp; !isnan(humid)) {
+      char jsonBuffer[100];
+      snprintf(jsonBuffer, sizeof(jsonBuffer), "{\"temp\":%.2f,\"humid\":%.2f}", temp, humid);
+
+      // Broadcast wirelessly to web dashboard
+      webSocket.broadcastTXT(jsonBuffer);
+      Serial.println(jsonBuffer);
+    }
+  }
+}</code></pre>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button id="btnModalCloseSecondary" class="btn btn-secondary">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================
+       Reset History & Data Confirmation Modal
+       ======================================================================== -->
+  <div id="resetModalOverlay" class="modal-overlay">
+    <div class="modal-card" style="max-width: 520px;">
+      <div class="modal-header">
+        <div style="display:flex; align-items:center; gap:0.6rem;">
+          <div class="card-icon reset-modal-icon">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+              <path d="M3 3v5h5"/>
+            </svg>
+          </div>
+          <h3>Reset Telemetry &amp; History?</h3>
+        </div>
+        <button id="btnCloseResetModal" class="btn-icon" title="Close dialog">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="modal-body" style="padding:1.4rem;">
+        <p style="color:var(--text-main); font-size:0.92rem; line-height:1.5; margin-bottom:0.75rem;">
+          You currently have <strong id="resetRecordCount">0</strong> recorded telemetry data points in your database.
+        </p>
+        <p style="color:var(--text-muted); font-size:0.84rem; line-height:1.5;">
+          Would you like to export and download your complete telemetry CSV file before clearing the data, or proceed with resetting directly?
+        </p>
+      </div>
+
+      <div class="modal-footer" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;">
+        <button id="btnCancelReset" class="btn btn-secondary">Cancel</button>
+        <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+          <button id="btnResetDirectly" class="btn btn-reset btn-reset-danger">
+            Reset
+          </button>
+          <button id="btnDownloadAndReset" class="btn btn-export-csv">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            Download CSV &amp; Reset
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <!-- Scripts -->
+  <script src="js/background.js"></script>
+  <script src="js/chart.js"></script>
+  <script src="js/simulator.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
